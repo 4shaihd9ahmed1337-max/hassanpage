@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام متابعة عقود الإيجار السكنية</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; padding: 20px; direction: rtl;
+        }
+        .container {
+            max-width: 1200px; margin: 0 auto; background: #ffffff;
+            border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white; padding: 30px; text-align: center;
+        }
+        header h1 { font-size: 2em; margin-bottom: 10px; }
+        header p { font-size: 1.1em; opacity: 0.9; }
+        .content { padding: 30px; }
+        .form-section {
+            background: #f8f9fa; border-radius: 10px; padding: 25px;
+            margin-bottom: 30px; border: 2px solid #e9ecef;
+        }
+        .form-section h2 {
+            color: #2a5298; margin-bottom: 20px; font-size: 1.5em;
+            border-right: 4px solid #667eea; padding-right: 15px;
+        }
+        .form-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px; margin-bottom: 20px;
+        }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-weight: 600; color: #495057; margin-bottom: 8px; font-size: 0.95em; }
+        .form-group input, .form-group select {
+            padding: 12px 15px; border: 2px solid #dee2e6; border-radius: 8px;
+            font-size: 1em; transition: all 0.3s; font-family: inherit;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none; border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+        .btn-add {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; padding: 15px 40px; border: none; border-radius: 8px;
+            font-size: 1.1em; font-weight: 600; cursor: pointer; transition: all 0.3s;
+            width: 100%; margin-top: 10px;
+        }
+        .btn-add:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102,126,234,0.4); }
+        .export-buttons { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+        .btn-export {
+            color: white; padding: 12px 25px; border: none; border-radius: 8px;
+            font-size: 1em; font-weight: 600; cursor: pointer; transition: all 0.3s;
+        }
+        .btn-export-all { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
+        .btn-export-paid { background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); }
+        .btn-export-unpaid { background: linear-gradient(135deg, #dc3545 0%, #a71d2a 100%); }
+        .btn-export:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .filter-section {
+            background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 20px;
+            border: 2px solid #e9ecef;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px; align-items: end;
+        }
+        .filter-group { display: flex; flex-direction: column; }
+        .filter-group label { font-weight: 600; color: #495057; margin-bottom: 8px; font-size: 0.95em; }
+        .filter-group input, .filter-group select {
+            padding: 10px 15px; border: 2px solid #dee2e6; border-radius: 8px;
+            font-size: 1em; font-family: inherit;
+        }
+        .monthly-summary {
+            background: #fff; border-radius: 10px; padding: 20px;
+            margin-bottom: 20px; border: 2px solid #e9ecef;
+        }
+        .monthly-summary h3 { color: #2a5298; margin-bottom: 15px; font-size: 1.3em; }
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
+        .summary-item {
+            background: #f8f9fa; padding: 15px; border-radius: 8px;
+            text-align: center; border: 2px solid #dee2e6;
+        }
+        .summary-item .month { font-size: 0.9em; color: #6c757d; margin-bottom: 5px; }
+        .summary-item .amount { font-size: 1.3em; font-weight: 700; color: #28a745; }
+        .table-section {
+            overflow-x: auto; border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        thead { background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%); color: white; }
+        th { padding: 15px 10px; text-align: right; font-weight: 600; font-size: 0.95em; white-space: nowrap; }
+        td { padding: 15px 10px; border-bottom: 1px solid #e9ecef; font-size: 0.9em; }
+        tbody tr { transition: background 0.2s; }
+        tbody tr:hover { background: #f8f9fa; }
+        .btn-delete {
+            background: #dc3545; color: white; border: none; border-radius: 5px;
+            padding: 5px 10px; cursor: pointer; font-size: 0.85em; transition: all 0.2s;
+        }
+        .btn-delete:hover { background: #a71d2a; }
+        .status-checkbox { width: 20px; height: 20px; cursor: pointer; }
+        .status-paid { color: #28a745; font-weight: 600; }
+        .status-unpaid { color: #dc3545; font-weight: 600; }
+        .empty-state { text-align: center; padding: 60px 20px; color: #6c757d; }
+        .empty-state svg { width: 100px; height: 100px; margin-bottom: 20px; opacity: 0.5; }
+        .empty-state h3 { font-size: 1.3em; margin-bottom: 10px; }
+        .stats-container {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px; margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white; padding: 20px; border-radius: 10px;
+            border: 2px solid #e9ecef; text-align: center; transition: all 0.3s;
+        }
+        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .stat-card h3 { font-size: 2em; margin-bottom: 5px; color: #2a5298; }
+        .stat-card p { color: #6c757d; font-size: 0.9em; }
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            header h1 { font-size: 1.5em; }
+            .content { padding: 15px; }
+            .form-grid, .filter-section { grid-template-columns: 1fr; }
+            table { font-size: 0.85em; }
+            th, td { padding: 10px 5px; }
+            .export-buttons { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>🏢 نظام متابعة عقود الإيجار السكنية</h1>
+        <p>إدارة شاملة لجميع عقود الإيجار والوحدات السكنية</p>
+    </header>
+
+    <div class="content">
+        <!-- Stats -->
+        <div class="stats-container">
+            <div class="stat-card"><h3 id="totalContracts">0</h3><p>إجمالي العقود</p></div>
+            <div class="stat-card"><h3 id="paidContracts">0</h3><p>عقود مدفوعة</p></div>
+            <div class="stat-card"><h3 id="unpaidContracts">0</h3><p>عقود غير مدفوعة</p></div>
+        </div>
+
+        <!-- Form -->
+        <div class="form-section">
+            <h2>➕ إضافة عقد إيجار جديد</h2>
+            <form id="contractForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="propertyName">اسم العقار *</label>
+                        <select id="propertyName" required>
+                            <option value="">اختر العقار</option>
+                            <option value="عمارة رقم 1">عمارة رقم 1</option>
+                            <option value="عمارة رقم 2">عمارة رقم 2</option>
+                            <option value="عمارة رقم 3">عمارة رقم 3</option>
+                            <option value="عمارة رقم 4">عمارة رقم 4</option>
+                            <option value="عمارة رقم 5">عمارة رقم 5</option>
+                            <option value="عمارة رقم 6">عمارة رقم 6</option>
+                            <option value="شقق مفروشة">شقق مفروشة</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="unitType">نوع الوحدة *</label>
+                        <select id="unitType" required>
+                            <option value="">اختر نوع الوحدة</option>
+                            <option value="شقة 1">شقة 1</option>
+                            <option value="شقة 2">شقة 2</option>
+                            <option value="شقة 3">شقة 3</option>
+                            <option value="شقة 4">شقة 4</option>
+                            <option value="شقة 5">شقة 5</option>
+                            <option value="شقة 6">شقة 6</option>
+                            <option value="شقة 7">شقة 7</option>
+                            <option value="شقة 8">شقة 8</option>
+                            <option value="شقة 9">شقة 9</option>
+                            <option value="شقة 10">شقة 10</option>
+                            <option value="شقة 11">شقة 11</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="tenantName">اسم المستأجر *</label>
+                        <input type="text" id="tenantName" required placeholder="مثال: أحمد محمد">
+                    </div>
+                    <div class="form-group">
+                        <label for="tenantPhone">رقم جوال المستأجر *</label>
+                        <input type="tel" id="tenantPhone" required placeholder="05xxxxxxxx" pattern="[0-9]{10}">
+                    </div>
+                    <div class="form-group">
+                        <label for="monthlyRent">الإيجار الشهري (ريال) *</label>
+                        <input type="number" id="monthlyRent" required placeholder="مثال: 2500" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="startDate">تاريخ بداية العقد *</label>
+                        <input type="date" id="startDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="endDate">تاريخ نهاية العقد *</label>
+                        <input type="date" id="endDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="firstPaymentDate">تاريخ أول دفعة *</label>
+                        <input type="date" id="firstPaymentDate" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-add">إضافة العقد</button>
+            </form>
+        </div>
+
+        <!-- Monthly Summary -->
+        <div class="monthly-summary">
+            <h3>📊 ملخص الإيجارات الشهرية (العقود المدفوعة)</h3>
+            <div class="summary-grid" id="monthlySummary"></div>
+        </div>
+
+        <!-- Export Buttons -->
+        <div class="export-buttons">
+            <button class="btn-export btn-export-all" onclick="exportToExcel('all')">
+                📥 تصدير الكل (كل عمارة في شيت)
+            </button>
+            <button class="btn-export btn-export-paid" onclick="exportToExcel('paid')">
+                ✅ تصدير المدفوعة فقط
+            </button>
+            <button class="btn-export btn-export-unpaid" onclick="exportToExcel('unpaid')">
+                ❌ تصدير غير المدفوعة فقط
+            </button>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-section">
+            <div class="filter-group">
+                <label for="filterProperty">تصفية حسب العقار</label>
+                <select id="filterProperty">
+                    <option value="">جميع العقارات</option>
+                    <option value="عمارة رقم 1">عمارة رقم 1</option>
+                    <option value="عمارة رقم 2">عمارة رقم 2</option>
+                    <option value="عمارة رقم 3">عمارة رقم 3</option>
+                    <option value="عمارة رقم 4">عمارة رقم 4</option>
+                    <option value="عمارة رقم 5">عمارة رقم 5</option>
+                    <option value="عمارة رقم 6">عمارة رقم 6</option>
+                    <option value="شقق مفروشة">شقق مفروشة</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filterStatus">تصفية حسب الحالة</label>
+                <select id="filterStatus">
+                    <option value="">الكل</option>
+                    <option value="paid">مدفوع</option>
+                    <option value="unpaid">غير مدفوع</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="searchTenant">البحث عن مستأجر</label>
+                <input type="text" id="searchTenant" placeholder="ابحث باسم المستأجر...">
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-section">
+            <table id="contractsTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>اسم العقار</th>
+                        <th>نوع الوحدة</th>
+                        <th>المستأجر</th>
+                        <th>رقم الجوال</th>
+                        <th>الإيجار الشهري</th>
+                        <th>تاريخ البداية</th>
+                        <th>تاريخ النهاية</th>
+                        <th>تاريخ أول دفعة</th>
+                        <th>الحالة</th>
+                        <th>حذف</th>
+                    </tr>
+                </thead>
+                <tbody id="contractsTableBody">
+                    <tr>
+                        <td colspan="11" class="empty-state">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            <h3>لا توجد عقود بعد</h3>
+                            <p>ابدأ بإضافة عقد إيجار جديد من النموذج أعلاه</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'rentalContracts';
+let contracts = [];
+let filteredContracts = [];
+
+const contractForm  = document.getElementById('contractForm');
+const tableBody     = document.getElementById('contractsTableBody');
+const filterProperty= document.getElementById('filterProperty');
+const filterStatus  = document.getElementById('filterStatus');
+const searchTenant  = document.getElementById('searchTenant');
+
+// ── Storage ──────────────────────────────────────────────
+function loadContractsFromStorage() {
+    try {
+        const data = localStorage.getItem(STORAGE_KEY);
+        contracts = data ? JSON.parse(data) : [];
+        filteredContracts = [...contracts];
+    } catch (e) { contracts = []; filteredContracts = []; }
+}
+
+function saveContractsToStorage() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts)); }
+    catch (e) { alert('⚠️ حدث خطأ أثناء حفظ البيانات'); }
+}
+
+// ── Add Contract ──────────────────────────────────────────
+contractForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const contract = {
+        id: Date.now(),
+        propertyName:     document.getElementById('propertyName').value,
+        unitType:         document.getElementById('unitType').value,
+        tenantName:       document.getElementById('tenantName').value,
+        tenantPhone:      document.getElementById('tenantPhone').value,
+        monthlyRent:      document.getElementById('monthlyRent').value,
+        startDate:        document.getElementById('startDate').value,
+        endDate:          document.getElementById('endDate').value,
+        firstPaymentDate: document.getElementById('firstPaymentDate').value,
+        isPaid: false
+    };
+    contracts.push(contract);
+    saveContractsToStorage();
+    applyFilters();
+    updateStats();
+    updateMonthlySummary();
+    contractForm.reset();
+    alert('✅ تم إضافة العقد بنجاح!');
+});
+
+// ── Toggle & Delete ───────────────────────────────────────
+function togglePaymentStatus(contractId) {
+    const c = contracts.find(c => c.id === contractId);
+    if (c) {
+        c.isPaid = !c.isPaid;
+        saveContractsToStorage();
+        applyFilters();
+        updateStats();
+        updateMonthlySummary();
+    }
+}
+
+function deleteContract(contractId) {
+    if (!confirm('هل أنت متأكد من حذف هذا العقد؟')) return;
+    contracts = contracts.filter(c => c.id !== contractId);
+    saveContractsToStorage();
+    applyFilters();
+    updateStats();
+    updateMonthlySummary();
+}
+
+// ── Render ────────────────────────────────────────────────
+function renderTable() {
+    if (filteredContracts.length === 0) {
+        tableBody.innerHTML = `
+            <tr><td colspan="11" class="empty-state">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <h3>لا توجد عقود</h3>
+                <p>لا توجد عقود تطابق معايير البحث</p>
+            </td></tr>`;
+        return;
+    }
+    tableBody.innerHTML = '';
+    filteredContracts.forEach((contract, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${contract.propertyName}</td>
+            <td>${contract.unitType}</td>
+            <td>${contract.tenantName}</td>
+            <td>${contract.tenantPhone}</td>
+            <td>${parseInt(contract.monthlyRent).toLocaleString()} ر.س</td>
+            <td>${formatDate(contract.startDate)}</td>
+            <td>${formatDate(contract.endDate)}</td>
+            <td>${formatDate(contract.firstPaymentDate)}</td>
+            <td>
+                <input type="checkbox" class="status-checkbox"
+                    ${contract.isPaid ? 'checked' : ''}
+                    onchange="togglePaymentStatus(${contract.id})">
+                <span class="${contract.isPaid ? 'status-paid' : 'status-unpaid'}">
+                    ${contract.isPaid ? 'مدفوع' : 'غير مدفوع'}
+                </span>
+            </td>
+            <td><button class="btn-delete" onclick="deleteContract(${contract.id})">🗑️ حذف</button></td>`;
+        tableBody.appendChild(row);
+    });
+}
+
+function formatDate(dateString) {
+    return new Date(dateString).toLocaleDateString('ar-SA', {
+        year: 'numeric', month: '2-digit', day: '2-digit'
+    });
+}
+
+// ── Stats ─────────────────────────────────────────────────
+function updateStats() {
+    const total = contracts.length;
+    const paid  = contracts.filter(c => c.isPaid).length;
+    document.getElementById('totalContracts').textContent   = total;
+    document.getElementById('paidContracts').textContent    = paid;
+    document.getElementById('unpaidContracts').textContent  = total - paid;
+}
+
+// ── Monthly Summary ───────────────────────────────────────
+function updateMonthlySummary() {
+    const div = document.getElementById('monthlySummary');
+    const totals = {};
+    contracts.filter(c => c.isPaid).forEach(c => {
+        const d = new Date(c.firstPaymentDate);
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        totals[key] = (totals[key] || 0) + parseFloat(c.monthlyRent);
+    });
+    const keys = Object.keys(totals).sort();
+    if (!keys.length) {
+        div.innerHTML = '<p style="text-align:center;color:#6c757d;">لا توجد عقود مدفوعة بعد</p>';
+        return;
+    }
+    div.innerHTML = keys.map(k => {
+        const [y, m] = k.split('-');
+        const name = new Date(y, m-1).toLocaleDateString('ar-SA', { month:'long', year:'numeric' });
+        return `<div class="summary-item">
+            <div class="month">${name}</div>
+            <div class="amount">${totals[k].toLocaleString()} ر.س</div>
+        </div>`;
+    }).join('');
+}
+
+// ── Filters ───────────────────────────────────────────────
+[filterProperty, filterStatus, searchTenant].forEach(el =>
+    el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', applyFilters)
+);
+
+function applyFilters() {
+    const prop   = filterProperty.value;
+    const status = filterStatus.value;
+    const search = searchTenant.value.toLowerCase();
+    filteredContracts = contracts.filter(c => {
+        const matchProp   = !prop   || c.propertyName === prop;
+        const matchStatus = !status || (status === 'paid' ? c.isPaid : !c.isPaid);
+        const matchSearch = !search || c.tenantName.toLowerCase().includes(search);
+        return matchProp && matchStatus && matchSearch;
+    });
+    renderTable();
+}
+
+// ── Excel Export ──────────────────────────────────────────
+function buildRow(c, idx) {
+    return {
+        '#':                idx + 1,
+        'اسم العقار':       c.propertyName,
+        'نوع الوحدة':       c.unitType,
+        'اسم المستأجر':     c.tenantName,
+        'رقم الجوال':       c.tenantPhone,
+        'الإيجار الشهري':   parseFloat(c.monthlyRent),
+        'تاريخ البداية':    c.startDate,
+        'تاريخ النهاية':    c.endDate,
+        'تاريخ أول دفعة':  c.firstPaymentDate,
+        'الحالة':           c.isPaid ? 'مدفوع ✅' : 'غير مدفوع ❌'
+    };
+}
+
+function colWidths() {
+    return [
+        {wch:5},{wch:18},{wch:12},{wch:22},{wch:15},
+        {wch:16},{wch:14},{wch:14},{wch:15},{wch:14}
+    ];
+}
+
+function addSheetForGroup(wb, rows, sheetName) {
+    if (!rows.length) return;
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = colWidths();
+
+    // Summary row at the bottom
+    const totalRent = rows.reduce((s, r) => s + r['الإيجار الشهري'], 0);
+    const paidCount = rows.filter(r => r['الحالة'].includes('مدفوع ✅')).length;
+    XLSX.utils.sheet_add_aoa(ws, [
+        [],
+        ['', '', '', '', 'إجمالي الإيجارات:', totalRent, '', '', '', `المدفوع: ${paidCount} / ${rows.length}`]
+    ], { origin: -1 });
+
+    // Safe sheet name (max 31 chars, no special chars)
+    const safeName = sheetName.replace(/[\\\/\?\*\[\]]/g, '').substring(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, safeName);
+}
+
+function exportToExcel(mode) {
+    if (!contracts.length) { alert('⚠️ لا توجد بيانات للتصدير'); return; }
+
+    // Filter by mode
+    let source = contracts;
+    if (mode === 'paid')   source = contracts.filter(c => c.isPaid);
+    if (mode === 'unpaid') source = contracts.filter(c => !c.isPaid);
+
+    if (!source.length) { alert('⚠️ لا توجد عقود تطابق هذا التصنيف'); return; }
+
+    const wb = XLSX.utils.book_new();
+
+    // ── Sheet 1: ملخص عام ────────────────────────────────
+    const summaryRows = [];
+    const buildings = [...new Set(source.map(c => c.propertyName))].sort();
+    buildings.forEach(b => {
+        const group = source.filter(c => c.propertyName === b);
+        const totalRent = group.reduce((s,c) => s + parseFloat(c.monthlyRent), 0);
+        const paid      = group.filter(c => c.isPaid).length;
+        summaryRows.push({
+            'العقار':           b,
+            'عدد العقود':       group.length,
+            'المدفوعة':         paid,
+            'غير المدفوعة':     group.length - paid,
+            'إجمالي الإيجارات (ر.س)': totalRent,
+            'المدفوع (ر.س)':    group.filter(c=>c.isPaid).reduce((s,c)=>s+parseFloat(c.monthlyRent),0),
+            'غير المدفوع (ر.س)':group.filter(c=>!c.isPaid).reduce((s,c)=>s+parseFloat(c.monthlyRent),0)
+        });
+    });
+    // Grand total row
+    summaryRows.push({
+        'العقار': '📊 الإجمالي الكلي',
+        'عدد العقود':           source.length,
+        'المدفوعة':             source.filter(c=>c.isPaid).length,
+        'غير المدفوعة':         source.filter(c=>!c.isPaid).length,
+        'إجمالي الإيجارات (ر.س)': source.reduce((s,c)=>s+parseFloat(c.monthlyRent),0),
+        'المدفوع (ر.س)':        source.filter(c=>c.isPaid).reduce((s,c)=>s+parseFloat(c.monthlyRent),0),
+        'غير المدفوع (ر.س)':    source.filter(c=>!c.isPaid).reduce((s,c)=>s+parseFloat(c.monthlyRent),0)
+    });
+    const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+    wsSummary['!cols'] = [{wch:20},{wch:12},{wch:12},{wch:16},{wch:22},{wch:16},{wch:18}];
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'ملخص عام');
+
+    // ── Sheet per building ────────────────────────────────
+    buildings.forEach(building => {
+        const group = source.filter(c => c.propertyName === building);
+        const rows  = group.map((c, i) => buildRow(c, i));
+        addSheetForGroup(wb, rows, building);
+    });
+
+    // ── Sheet: كل العقود ─────────────────────────────────
+    const allRows = source.map((c, i) => buildRow(c, i));
+    addSheetForGroup(wb, allRows, 'جميع العقود');
+
+    // ── Save ──────────────────────────────────────────────
+    const today    = new Date();
+    const dateStr  = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const modeText = mode === 'paid' ? '_مدفوعة' : mode === 'unpaid' ? '_غير_مدفوعة' : '';
+    XLSX.writeFile(wb, `عقود_الإيجار${modeText}_${dateStr}.xlsx`);
+}
+
+// ── Init ──────────────────────────────────────────────────
+loadContractsFromStorage();
+renderTable();
+updateStats();
+updateMonthlySummary();
+</script>
+</body>
+</html>
